@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bradley's Weekly Grocery List</title>
+<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Grocery List&quot;,&quot;short_name&quot;:&quot;Groceries&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%230f1117&quot;,&quot;theme_color&quot;:&quot;%230f1117&quot;}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1117">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232734;
+    --border: #2e3345;
+    --text: #e4e6ed;
+    --text-dim: #8b8fa3;
+    --accent: #6c63ff;
+    --accent-glow: rgba(108, 99, 255, 0.15);
+    --green: #34d399;
+    --green-dim: rgba(52, 211, 153, 0.12);
+    --orange: #fb923c;
+    --orange-dim: rgba(251, 146, 60, 0.12);
+    --red: #f87171;
+    --red-dim: rgba(248, 113, 113, 0.1);
+    --sprouts: #22c55e;
+    --sams: #3b82f6;
+    --walmart: #f59e0b;
+    --farm: #a78bfa;
+    --amazon: #f97316;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #1e1b4b 0%, #1a1d27 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 20px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+  }
+
+  .header .subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .sync-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .sync-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.3s;
+  }
+
+  .sync-badge.connected .sync-dot { background: var(--green); }
+  .sync-badge.syncing .sync-dot { background: var(--orange); animation: pulse 1s infinite; }
+  .sync-badge.offline .sync-dot { background: var(--red); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .progress-bar-container {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    border-radius: 3px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .progress-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .controls button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .controls button:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  .controls button.active {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .controls button.danger { color: var(--red); }
+  .controls button.danger:hover { background: var(--red-dim); border-color: var(--red); }
+
+  .main {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 16px 16px 100px;
+  }
+
+  .store-section { margin-bottom: 24px; }
+
+  .store-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) 0 0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+
+  .store-header:hover { background: var(--surface2); }
+
+  .store-header.all-done {
+    background: rgba(52, 211, 153, 0.06);
+    border-color: rgba(52, 211, 153, 0.2);
+  }
+
+  .store-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .store-icon.sprouts { background: rgba(34,197,94,0.15); }
+  .store-icon.sams { background: rgba(59,130,246,0.15); }
+  .store-icon.walmart { background: rgba(245,158,11,0.15); }
+  .store-icon.farm { background: rgba(167,139,250,0.15); }
+  .store-icon.online { background: rgba(249,115,22,0.15); }
+
+  .store-name { font-weight: 700; font-size: 15px; flex: 1; }
+
+  .store-meta { text-align: right; }
+  .store-count { font-size: 12px; color: var(--text-dim); }
+  .store-price { font-size: 13px; font-weight: 600; color: var(--green); }
+
+  .store-chevron {
+    font-size: 12px;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+    margin-left: 4px;
+  }
+
+  .store-header.collapsed .store-chevron { transform: rotate(-90deg); }
+
+  .store-items {
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+  }
+
+  .store-items.hidden { display: none; }
+
+  .category-label {
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 16px;
+    gap: 12px;
+    border-bottom: 1px solid rgba(46, 51, 69, 0.5);
+    transition: all 0.25s;
+    cursor: pointer;
+  }
+
+  .item:last-child { border-bottom: none; }
+  .item:active { background: rgba(108, 99, 255, 0.08); }
+  .item.checked { opacity: 0.35; }
+  .item.checked .item-name { text-decoration: line-through; text-decoration-color: var(--text-dim); }
+
+  .checkbox {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-top: 1px;
+  }
+
+  .item.checked .checkbox { background: var(--green); border-color: var(--green); }
+
+  .checkbox svg { width: 13px; height: 13px; opacity: 0; transition: opacity 0.15s; }
+  .item.checked .checkbox svg { opacity: 1; }
+
+  .item-content { flex: 1; min-width: 0; }
+  .item-name { font-size: 14px; font-weight: 600; line-height: 1.35; transition: all 0.2s; }
+  .item-detail { font-size: 12px; color: var(--text-dim); margin-top: 2px; line-height: 1.4; }
+
+  .item-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--orange);
+    background: var(--orange-dim);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 4px;
+    margin-right: 4px;
+  }
+
+  .item-warning.critical { color: var(--red); background: var(--red-dim); }
+
+  .item-price { font-size: 13px; font-weight: 600; color: var(--text-dim); flex-shrink: 0; margin-top: 2px; }
+
+  .budget-summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .budget-summary h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .budget-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+
+  .budget-row.total {
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+    padding-top: 12px;
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  .budget-row .label { color: var(--text-dim); }
+  .budget-row .value { font-weight: 600; }
+  .budget-row.total .value { color: var(--green); }
+
+  .cook-day-banner {
+    background: linear-gradient(135deg, rgba(108,99,255,0.1), rgba(52,211,153,0.08));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+
+  .cook-day-banner h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .cook-day-banner p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+  .route-order {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .route-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .route-step .num {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    color: white;
+  }
+
+  .route-arrow { color: var(--text-dim); font-size: 14px; }
+
+  .done-celebration { text-align: center; padding: 40px 20px; display: none; }
+  .done-celebration.show { display: block; }
+  .done-celebration .emoji { font-size: 48px; margin-bottom: 12px; }
+  .done-celebration h2 { font-size: 20px; margin-bottom: 4px; }
+  .done-celebration p { color: var(--text-dim); font-size: 14px; }
+
+  /* ── Password Gate ── */
+  .lock-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .lock-screen.hidden { display: none; }
+
+  .lock-box {
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+  }
+
+  .lock-box .lock-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  .lock-box h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .lock-box p {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+
+  .lock-box input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 16px;
+    text-align: center;
+    letter-spacing: 2px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-text-security: disc;
+  }
+
+  .lock-box input:focus {
+    border-color: var(--accent);
+  }
+
+  .lock-box input.shake {
+    animation: shake 0.4s ease;
+    border-color: var(--red);
+  }
+
+  .lock-box .lock-btn {
+    width: 100%;
+    padding: 14px;
+    margin-top: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .lock-box .lock-btn:hover { opacity: 0.9; }
+
+  .lock-box .lock-error {
+    color: var(--red);
+    font-size: 12px;
+    margin-top: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .lock-box .lock-error.show { opacity: 1; }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+  }
+
+  @media (max-width: 500px) {
+    .header h1 { font-size: 19px; }
+    .main { padding: 12px 12px 100px; }
+    .item { padding: 10px 14px; }
+    .route-order { gap: 4px; }
+    .route-step { padding: 4px 8px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Password Gate -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">&#128274;</div>
+    <h2>Grocery List</h2>
+    <p>Enter password to continue</p>
+    <input type="password" id="lockInput" placeholder="Password" autocomplete="off" autofocus>
+    <button class="lock-btn" onclick="attemptUnlock()">Unlock</button>
+    <div class="lock-error" id="lockError">Incorrect password</div>
+  </div>
+</div>
+
+<div class="header" style="display:none" id="appHeader">
+  <div class="header-top">
+    <div>
+      <h1>Weekly Grocery List</h1>
+      <div class="subtitle">Week 1 Meal Plan &mdash; Bradley & Chelsea</div>
+    </div>
+    <div class="sync-badge offline" id="syncBadge">
+      <div class="sync-dot"></div>
+      <span id="syncLabel">Connecting...</span>
+    </div>
+  </div>
+  <div class="progress-bar-container">
+    <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width: 0%"></div></div>
+    <div class="progress-text" id="progressText">0 / 0</div>
+  </div>
+  <div class="controls">
+    <button id="btnAll" class="active" onclick="filterStore('all')">All Stores</button>
+    <button id="btnSprouts" onclick="filterStore('sprouts')">Sprouts</button>
+    <button id="btnSams" onclick="filterStore('sams')">Sam's Club</button>
+    <button id="btnWalmart" onclick="filterStore('walmart')">Walmart</button>
+    <button id="btnFarm" onclick="filterStore('farm')">Farm</button>
+    <button id="btnOnline" onclick="filterStore('online')">Online</button>
+    <button class="danger" onclick="resetAll()">Reset</button>
+  </div>
+</div>
+
+<div class="main" style="display:none" id="appMain">
+
+  <div class="route-order">
+    <div class="route-step"><div class="num" style="background:var(--sprouts)">1</div> Sprouts</div>
+    <span class="route-arrow">&rarr;</span>
+    <div class="route-step"><div class="num" style="background:var(--sams)">2</div> Sam's Club</div>
+    <span class="route-arrow">&rarr;</span>
+    <div class="route-step"><div class="num" style="background:var(--walmart)">3</div> Walmart</div>
+    <span class="route-arrow">&rarr;</span>
+    <div class="route-step"><div class="num" style="background:var(--farm)">4</div> Local Farm</div>
+  </div>
+
+  <div class="done-celebration" id="doneCelebration">
+    <div class="emoji">&#127881;</div>
+    <h2>Shopping Complete!</h2>
+    <p>Everything's checked off. Time to cook!</p>
+  </div>
+
+  <div id="listContainer"></div>
+
+  <div class="budget-summary">
+    <h3>Weekly Budget</h3>
+    <div class="budget-row"><span class="label">Produce (Sprouts)</span><span class="value">$83.39</span></div>
+    <div class="budget-row"><span class="label">Protein (Sam's Club + Farm)</span><span class="value">$47.54</span></div>
+    <div class="budget-row"><span class="label">Staples (amortized)</span><span class="value">$56.38</span></div>
+    <div class="budget-row total"><span class="label">Weekly Food Total</span><span class="value">$187.31</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="label">Monthly Food (~4.3 wks)</span><span class="value" style="color:var(--text)">~$805</span></div>
+    <div class="budget-row"><span class="label">Monthly Supplements (w/ tax)</span><span class="value" style="color:var(--text)">~$83</span></div>
+    <div class="budget-row total"><span class="label">Monthly Grand Total</span><span class="value">~$888</span></div>
+  </div>
+
+  <div class="cook-day-banner">
+    <h3>&#128293; Cook Day Reminders</h3>
+    <p><strong>Sunday (~2-3 hrs):</strong> Roast chicken &bull; Mashed potatoes (5 lb, NO butter, 6 tbsp EVOO) &bull; Roast sweet potatoes &bull; Cook quinoa (RINSE FIRST) &bull; Steam carrots, bok choy, zucchini &bull; Portion into Souper Cubes &rarr; freeze immediately</p>
+    <p style="margin-top:8px"><strong>Wednesday (~1-1.5 hrs):</strong> Cook more chicken &bull; Steam green beans &bull; Cook rice (if tolerated) &bull; Roast more golden potatoes if low &bull; More mashed if needed &bull; Portion &rarr; freeze</p>
+    <p style="margin-top:8px"><strong>Daily (Mom):</strong> 4 eggs in EVOO + 1/3 cup buckwheat cooked fresh</p>
+    <p style="margin-top:8px"><strong>Salmon:</strong> Cook from FROZEN each time &mdash; 425&deg;F, 12-15 min on parchment. Never batch cook.</p>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════
+//  FIREBASE CONFIG (hardcoded — these are safe to be public)
+// ══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyDuKJLZc_OkrqgknurYArU5Iu86u1NYo5E",
+  authDomain: "grocery-list-64c1c.firebaseapp.com",
+  databaseURL: "https://grocery-list-64c1c-default-rtdb.firebaseio.com",
+  projectId: "grocery-list-64c1c",
+  storageBucket: "grocery-list-64c1c.firebasestorage.app",
+  messagingSenderId: "333333760285",
+  appId: "1:333333760285:web:93f7eccee5b4094cfeb9f4"
+};
+
+// ══════════════════════════════════════════
+//  GROCERY DATA
+// ══════════════════════════════════════════
+const DATA = [
+  {
+    store: "sprouts", storeName: "Sprouts", icon: "&#127793;", storePrice: "$83.39/wk",
+    categories: [
+      {
+        name: "Potatoes & Starches",
+        items: [
+          { id: "s1", name: "Golden/Yukon Gold Potatoes \u2014 7-8 lbs", detail: "5 lb bag for mashed + 2-3 lbs for roasted cubes", price: "$9.00", warnings: [{ text: "NOT white/russet potatoes", critical: true }] },
+          { id: "s2", name: "Sweet Potatoes \u2014 3-4 medium", detail: "Roasted cubes for lunch/dinner sides", price: "$4.98" }
+        ]
+      },
+      {
+        name: "Vegetables",
+        items: [
+          { id: "s3", name: "Baby Bok Choy \u2014 4-6 heads", detail: "Best non-dairy calcium source. Saut\u00e9 in EVOO + ginger + salt.", price: "$3.74" },
+          { id: "s4", name: "Carrots \u2014 2 lbs", detail: "Steam and freeze in Souper Cubes", price: "$3.00" },
+          { id: "s5", name: "Zucchini \u2014 3-4 medium", detail: "Roast with EVOO + oregano + salt", price: "$5.23" },
+          { id: "s6", name: "Green Beans \u2014 1 bunch or 1 bag frozen", detail: "Steam Wednesday cook day", price: "$3.99" },
+          { id: "s7", name: "English Cucumbers \u2014 2", detail: "Peeled, for snacks \u2014 eaten raw with salt + EVOO", price: "$3.00" }
+        ]
+      },
+      {
+        name: "Fruit",
+        items: [
+          { id: "s8", name: "Cantaloupes \u2014 2", detail: "Heavy use for snacks \u2014 Bradley loves these", price: "$7.98" },
+          { id: "s9", name: "Blueberries \u2014 2 pints", detail: "Antioxidant-rich snack (organic)", price: "$13.98" },
+          { id: "s10", name: "Golden Kiwis (Zespri SunGold) \u2014 5-7", detail: "Eaten with/after protein \u2014 actinidin enzyme aids meat digestion", price: "$10.00" }
+        ]
+      },
+      {
+        name: "Fresh Herbs",
+        items: [
+          { id: "s11", name: "Flat-leaf Parsley \u2014 1 bunch", detail: "Most nutrient-dense item on the safe list. Use generously.", price: "$2.00" },
+          { id: "s12", name: "Fresh Rosemary \u2014 1 package", price: "$2.50" },
+          { id: "s13", name: "Fresh Thyme \u2014 1 package", price: "$2.50" },
+          { id: "s14", name: "Fresh Dill \u2014 1 bunch", detail: "For salmon seasoning", price: "$2.50" },
+          { id: "s15", name: "Fresh Chives \u2014 1 bunch", detail: "For eggs", price: "$2.50" },
+          { id: "s16", name: "Fresh Ginger Root \u2014 1 small piece", detail: "For bok choy + ginger tea", price: "$3.99" },
+          { id: "s17", name: "Fresh Sage \u2014 1 small package", detail: "For chicken", price: "$2.50" }
+        ]
+      },
+      {
+        name: "Snacks",
+        items: [
+          { id: "s18", name: "Olive Oil Potato Chips \u2014 2 bags", detail: "Boulder Canyon or Good Health Olive Oil Sea Salt (3 ingredients only: potatoes, olive oil, sea salt)", price: "$8.00" }
+        ]
+      }
+    ]
+  },
+  {
+    store: "sams", storeName: "Sam's Club", icon: "&#127978;", storePrice: "$35.04/wk",
+    categories: [
+      {
+        name: "Protein",
+        items: [
+          { id: "sc1", name: "Chicken Thighs \u2014 FRESH TRAY (~4.5 lbs)", detail: "Member's Mark Boneless Skinless \u2014 ingredient must be ONLY \"chicken thighs\"", price: "$16.29", warnings: [{ text: "FRESH TRAY ONLY \u2014 never frozen bags", critical: true }, { text: "Frozen bags contain hidden broth/MSG/corn/dairy", critical: true }] },
+          { id: "sc2", name: "Wild Sockeye Salmon \u2014 1 bag (2 lbs)", detail: "Member's Mark Wild Caught Boneless Alaskan Sockeye. Cook from frozen each time \u2014 425\u00b0F, 12-15 min.", price: "$18.75", warnings: [{ text: "CHECK LABEL: only \"sockeye salmon\" \u2014 no STP, no salt solution" }] }
+        ]
+      },
+      {
+        name: "Staples (check stock)",
+        items: [
+          { id: "sc3", name: "Buckwheat Groats \u2014 Bob's Red Mill GF", detail: "1/3 cup dry per day. Check if you need a refill.", price: "$6.35/wk", check: true },
+          { id: "sc4", name: "Quinoa \u2014 bulk bag", detail: "~3-4 cups cooked/week", price: "$4.62/wk", check: true, warnings: [{ text: "RINSE WELL before cooking \u2014 saponin triggers mast cells" }] },
+          { id: "sc5", name: "White Rice (if tolerated \u2014 TEST)", detail: "Small amount for Wed/Fri", price: "$1.72/wk", check: true }
+        ]
+      }
+    ]
+  },
+  {
+    store: "walmart", storeName: "Walmart", icon: "&#11088;", storePrice: "~$23/trip",
+    categories: [
+      {
+        name: "Oils",
+        items: [
+          { id: "w1", name: "California Olive Ranch 100% California EVOO \u2014 1L", detail: "For cooking (2.5 tbsp/day). Same bottle is $37 at Sprouts \u2014 buy here.", price: "~$18.00", check: true, warnings: [{ text: "Must say '100% California' \u2014 NOT 'Global Blend'" }, { text: "Never use Great Value/generic \u2014 adulteration risk", critical: true }] }
+        ]
+      },
+      {
+        name: "Electrolytes & Drinks",
+        items: [
+          { id: "w2", name: "NoSalt or Nu-Salt Potassium Chloride", detail: "For DIY electrolyte drinks. Mix \u00bd tsp salt + \u00bc tsp NoSalt in 16-20oz water, 4-5x/day.", price: "~$4.00", check: true },
+          { id: "w3", name: "Almond Breeze Unsweetened Almond Milk", detail: "For mashed potatoes. Lasts ~8 weeks at current use.", price: "$4.67", check: true, warnings: [{ text: "UNSWEETENED only (0g sugar) \u2014 Original has 7g = tachycardia risk", critical: true }] }
+        ]
+      },
+      {
+        name: "Snacks (if not bought at Sprouts)",
+        items: [
+          { id: "w4", name: "Olive Oil Potato Chips \u2014 2 bags", detail: "Boulder Canyon or Good Health. Also available at Sprouts.", price: "~$8.00", check: true }
+        ]
+      },
+      {
+        name: "Supplements",
+        items: [
+          { id: "w5", name: "Thorne Buffered C Powder", detail: "1 scoop/day \u2014 cheapest here (~$6 less than elsewhere). Lasts 60 days.", price: "$23.00", check: true }
+        ]
+      }
+    ]
+  },
+  {
+    store: "farm", storeName: "Local Farm", icon: "&#129415;", storePrice: "$12.50/wk",
+    categories: [
+      {
+        name: "Eggs",
+        items: [
+          { id: "f1", name: "Farm Eggs \u2014 2.5-3 dozen", detail: "4 eggs/day \u00d7 7 days = 28 eggs/week minimum. Pastured is best.", price: "$12.50" }
+        ]
+      }
+    ]
+  },
+  {
+    store: "online", storeName: "Online / Amazon", icon: "&#128230;", storePrice: "~$83/mo",
+    categories: [
+      {
+        name: "Supplements (monthly \u2014 check stock)",
+        items: [
+          { id: "a1", name: "Thorne Vitamin D/K2 Liquid", detail: "3 drops/day. Lasts ~200 days.", price: "$5.41/mo", check: true },
+          { id: "a2", name: "Bluebonnet Calcium + Mag + D3 Liquid", detail: "1 tbsp/day split AM/PM. Also covers magnesium.", price: "$15.86/mo", check: true },
+          { id: "a3", name: "Nascent Iodine Drops (Global Healing)", detail: "1 drop/day. Lasts ~600 days. Redmond Salt is NOT iodized.", price: "$1.59/mo", check: true },
+          { id: "a4", name: "Tomorrow's Nutrition Sunfiber (PHGG)", detail: "2 scoops/day (11 AM + 4 PM). Lasts ~6.4 weeks.", price: "$10.16/mo", check: true },
+          { id: "a5", name: "Seeking Health B12 + L-5-MTHF Lozenges", detail: "1 lozenge/day. Dissolves in mouth.", price: "$14.31/mo", check: true },
+          { id: "a6", name: "NeuroProtek (Algonot)", detail: "1 softgel/day midday. Mast cell stabilizer.", price: "$23.85/mo", check: true },
+          { id: "a7", name: "Seeking Health Zinc Lozenge 15mg", detail: "1 lozenge/day. Dissolves in mouth.", price: "$10.07/mo", check: true },
+          { id: "a8", name: "DAO Plus (Intoleran) \u2014 optional", detail: "For trigger food meals only. Take before eating.", price: "$28.93/mo", check: true }
+        ]
+      },
+      {
+        name: "Pantry (check stock)",
+        items: [
+          { id: "a9", name: "43 Ranch EVOO", detail: "For drizzling/shots \u2014 2 tbsp/day. ~1 bottle every 2 weeks.", price: "$16.59/wk", check: true },
+          { id: "a10", name: "Redmond Real Salt (large bag)", detail: "Heavy use for POTS \u2014 6-10g sodium/day. NOT iodized.", price: "on hand", check: true },
+          { id: "a11", name: "Dried Oregano", detail: "For zucchini", check: true },
+          { id: "a12", name: "Dried Basil", detail: "For eggs", check: true }
+        ]
+      },
+      {
+        name: "Tea \u2014 All Caffeine-Free",
+        items: [
+          { id: "a13", name: "Chamomile \u2014 Traditional Medicinals", detail: "Organic, caffeine-free. Mast cell stabilizing (apigenin).", price: "$1.63/wk", check: true },
+          { id: "a14", name: "Peppermint \u2014 Traditional Medicinals", detail: "Organic, caffeine-free. IBS antispasmodic.", price: "$1.17/wk", check: true },
+          { id: "a15", name: "Rooibos \u2014 Numi Organic", detail: "Naturally caffeine-free. Contains quercetin + luteolin.", price: "$1.11/wk", check: true },
+          { id: "a16", name: "Ginger+Chamomile \u2014 Traditional Medicinals", detail: "Caffeine-free. Anti-nausea + prokinetic.", price: "$0.70/wk", check: true }
+        ]
+      },
+      {
+        name: "Kitchen Supplies",
+        items: [
+          { id: "a17", name: "Parchment Paper", detail: "For salmon sheet pan cooking. ~5 sheets/week.", price: "$0.63/wk", check: true },
+          { id: "a18", name: "Glass Jars or Pyrex", detail: "For freezer storage \u2014 no plastic. Leave 1\" headroom.", check: true }
+        ]
+      }
+    ]
+  }
+];
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let checkedItems = {};
+let currentFilter = 'all';
+let collapsedStores = JSON.parse(localStorage.getItem('groceryCollapsed') || '{}');
+let firebaseReady = false;
+let dbRef = null;
+
+// ══════════════════════════════════════════
+//  FIREBASE
+// ══════════════════════════════════════════
+function setSyncStatus(status) {
+  const badge = document.getElementById('syncBadge');
+  const label = document.getElementById('syncLabel');
+  badge.className = 'sync-badge ' + status;
+  if (status === 'connected') label.textContent = 'Synced';
+  else if (status === 'syncing') label.textContent = 'Syncing...';
+  else label.textContent = 'Offline';
+}
+
+function initFirebase() {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    dbRef = db.ref('grocery/checked');
+
+    // Real-time listener — this is the single source of truth
+    dbRef.on('value', function(snapshot) {
+      var data = snapshot.val();
+      checkedItems = (data && typeof data === 'object') ? data : {};
+      render();
+    });
+
+    // Connection state
+    db.ref('.info/connected').on('value', function(snap) {
+      setSyncStatus(snap.val() === true ? 'connected' : 'offline');
+    });
+
+    firebaseReady = true;
+  } catch (e) {
+    console.error('Firebase init error:', e);
+    setSyncStatus('offline');
+  }
+}
+
+function syncToFirebase() {
+  if (!firebaseReady || !dbRef) return;
+  setSyncStatus('syncing');
+  // Only write truthy values (saves space, cleaner data)
+  var clean = {};
+  Object.keys(checkedItems).forEach(function(k) {
+    if (checkedItems[k]) clean[k] = true;
+  });
+  dbRef.set(clean).then(function() {
+    setSyncStatus('connected');
+  }).catch(function() {
+    setSyncStatus('offline');
+  });
+}
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+function getTotalItems() {
+  var count = 0;
+  DATA.forEach(function(s) { s.categories.forEach(function(c) { count += c.items.length; }); });
+  return count;
+}
+
+function getCheckedCount() {
+  var count = 0;
+  DATA.forEach(function(s) { s.categories.forEach(function(c) { c.items.forEach(function(i) {
+    if (checkedItems[i.id]) count++;
+  }); }); });
+  return count;
+}
+
+function getStoreChecked(store) {
+  var total = 0, checked = 0;
+  DATA.filter(function(s) { return s.store === store; }).forEach(function(s) { s.categories.forEach(function(c) {
+    c.items.forEach(function(i) {
+      total++;
+      if (checkedItems[i.id]) checked++;
+    });
+  }); });
+  return { total: total, checked: checked };
+}
+
+function toggleItem(id) {
+  if (checkedItems[id]) {
+    delete checkedItems[id];
+  } else {
+    checkedItems[id] = true;
+  }
+  syncToFirebase();
+  render();
+}
+
+function toggleStore(store) {
+  collapsedStores[store] = !collapsedStores[store];
+  localStorage.setItem('groceryCollapsed', JSON.stringify(collapsedStores));
+  render();
+}
+
+function resetAll() {
+  if (!confirm('Clear all checkmarks? This resets for everyone.')) return;
+  checkedItems = {};
+  syncToFirebase();
+  render();
+}
+
+// ══════════════════════════════════════════
+//  FILTER
+// ══════════════════════════════════════════
+var filterBtnMap = { all: 'btnAll', sprouts: 'btnSprouts', sams: 'btnSams', walmart: 'btnWalmart', farm: 'btnFarm', online: 'btnOnline' };
+
+function filterStore(store) {
+  currentFilter = store;
+  Object.keys(filterBtnMap).forEach(function(k) {
+    document.getElementById(filterBtnMap[k]).classList.remove('active');
+  });
+  document.getElementById(filterBtnMap[store]).classList.add('active');
+  render();
+}
+
+// ══════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════
+function render() {
+  var container = document.getElementById('listContainer');
+  var total = getTotalItems();
+  var checked = getCheckedCount();
+  var pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = checked + ' / ' + total;
+
+  var celebration = document.getElementById('doneCelebration');
+  celebration.classList.toggle('show', checked === total && total > 0);
+
+  var html = '';
+
+  DATA.forEach(function(storeData) {
+    if (currentFilter !== 'all' && storeData.store !== currentFilter) return;
+
+    var sc = getStoreChecked(storeData.store);
+    var isCollapsed = collapsedStores[storeData.store];
+    var allDone = sc.checked === sc.total && sc.total > 0;
+
+    html += '<div class="store-section" data-store="' + storeData.store + '">';
+    html += '<div class="store-header ' + (isCollapsed ? 'collapsed ' : '') + (allDone ? 'all-done' : '') + '" onclick="toggleStore(\'' + storeData.store + '\')">';
+    html += '<div class="store-icon ' + storeData.store + '">' + storeData.icon + '</div>';
+    html += '<div class="store-name">' + storeData.storeName + (allDone ? ' \u2713' : '') + '</div>';
+    html += '<div class="store-meta">';
+    html += '<div class="store-price">' + storeData.storePrice + '</div>';
+    html += '<div class="store-count">' + sc.checked + '/' + sc.total + ' items</div>';
+    html += '</div>';
+    html += '<div class="store-chevron">\u25bc</div>';
+    html += '</div>';
+
+    html += '<div class="store-items ' + (isCollapsed ? 'hidden' : '') + '">';
+
+    storeData.categories.forEach(function(cat) {
+      html += '<div class="category-label">' + cat.name + '</div>';
+
+      cat.items.forEach(function(item) {
+        var isChecked = !!checkedItems[item.id];
+        html += '<div class="item ' + (isChecked ? 'checked' : '') + '" onclick="toggleItem(\'' + item.id + '\')">';
+        html += '<div class="checkbox"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></div>';
+        html += '<div class="item-content">';
+        html += '<div class="item-name">' + (item.check ? '<span style="color:var(--orange);font-size:11px;margin-right:4px;">CHECK</span>' : '') + item.name + '</div>';
+        if (item.detail) html += '<div class="item-detail">' + item.detail + '</div>';
+        if (item.warnings) {
+          item.warnings.forEach(function(w) {
+            html += '<div class="item-warning ' + (w.critical ? 'critical' : '') + '">\u26a0 ' + w.text + '</div>';
+          });
+        }
+        html += '</div>';
+        if (item.price) html += '<div class="item-price">' + item.price + '</div>';
+        html += '</div>';
+      });
+    });
+
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html;
+}
+
+// ══════════════════════════════════════════
+//  PASSWORD GATE
+// ══════════════════════════════════════════
+var PASSWORD_HASH = '4894d50eed4fc7c94384e200023c171eb75f58cbed9a2507d180f420de6dbad1';
+
+async function hashPassword(pw) {
+  var encoded = new TextEncoder().encode(pw);
+  var buffer = await crypto.subtle.digest('SHA-256', encoded);
+  var arr = Array.from(new Uint8Array(buffer));
+  return arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+async function attemptUnlock() {
+  var input = document.getElementById('lockInput');
+  var pw = input.value;
+  if (!pw) return;
+
+  var hash = await hashPassword(pw);
+  if (hash === PASSWORD_HASH) {
+    sessionStorage.setItem('groceryAuth', 'true');
+    showApp();
+  } else {
+    input.classList.add('shake');
+    document.getElementById('lockError').classList.add('show');
+    setTimeout(function() {
+      input.classList.remove('shake');
+    }, 400);
+    input.value = '';
+    input.focus();
+  }
+}
+
+function showApp() {
+  document.getElementById('lockScreen').classList.add('hidden');
+  document.getElementById('appHeader').style.display = '';
+  document.getElementById('appMain').style.display = '';
+  render();
+  initFirebase();
+}
+
+// Enter key on password input
+document.getElementById('lockInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') attemptUnlock();
+});
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+if (sessionStorage.getItem('groceryAuth') === 'true') {
+  showApp();
+}
+</script>
+</body>
+</html>
