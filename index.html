@@ -238,18 +238,18 @@
   <div id="listContainer"></div>
   <div class="budget-summary">
     <h3>Weekly Budget</h3>
-    <div class="budget-row"><span class="label">Produce (Sprouts)</span><span class="value">$83.39</span></div>
+    <div class="budget-row"><span class="label">Produce (Sprouts)</span><span class="value">$82.39</span></div>
     <div class="budget-row"><span class="label">Protein (Sam's Club + Farm)</span><span class="value">$47.54</span></div>
     <div class="budget-row"><span class="label">Staples (amortized)</span><span class="value">$56.38</span></div>
-    <div class="budget-row total"><span class="label">Weekly Food Total</span><span class="value">$187.31</span></div>
-    <div class="budget-row" style="margin-top:8px"><span class="label">Monthly Food (~4.3 wks)</span><span class="value" style="color:var(--text)">~$805</span></div>
+    <div class="budget-row total"><span class="label">Weekly Food Total</span><span class="value">$186.31</span></div>
+    <div class="budget-row" style="margin-top:8px"><span class="label">Monthly Food (~4.3 wks)</span><span class="value" style="color:var(--text)">~$801</span></div>
     <div class="budget-row"><span class="label">Monthly Supplements (w/ tax)</span><span class="value" style="color:var(--text)">~$83</span></div>
-    <div class="budget-row total"><span class="label">Monthly Grand Total</span><span class="value">~$888</span></div>
+    <div class="budget-row total"><span class="label">Monthly Grand Total</span><span class="value">~$884</span></div>
   </div>
   <div class="cook-day-banner">
     <h3>&#128293; Cook Day Reminders</h3>
     <p><strong>Sunday (~2-3 hrs):</strong> Roast chicken &bull; Mashed potatoes (5 lb, NO butter, 6 tbsp EVOO) &bull; Roast sweet potatoes &bull; Cook quinoa (RINSE FIRST) &bull; Steam carrots, bok choy, zucchini &bull; Souper Cubes &rarr; freeze</p>
-    <p style="margin-top:8px"><strong>Wednesday (~1-1.5 hrs):</strong> Cook more chicken &bull; Steam green beans &bull; Cook rice (if tolerated) &bull; More golden potatoes if low &bull; Portion &rarr; freeze</p>
+    <p style="margin-top:8px"><strong>Wednesday (~1-1.5 hrs):</strong> Cook more chicken &bull; Roast extra zucchini &bull; Cook rice (if tolerated) &bull; More golden potatoes if low &bull; Portion &rarr; freeze</p>
     <p style="margin-top:8px"><strong>Daily (Mom):</strong> 4 eggs in EVOO + 1/3 cup buckwheat cooked fresh</p>
     <p style="margin-top:8px"><strong>Salmon:</strong> Cook from FROZEN each time &mdash; 425&deg;F, 12-15 min on parchment. Never batch cook.</p>
   </div>
@@ -269,7 +269,7 @@ var firebaseConfig = {
 };
 
 var DATA = [
-  { store:"sprouts", storeName:"Sprouts", icon:"&#127793;", storePrice:"$83.39/wk", categories:[
+  { store:"sprouts", storeName:"Sprouts", icon:"&#127793;", storePrice:"$82.39/wk", categories:[
     { name:"Potatoes & Starches", items:[
       { id:"s1", name:"Golden/Yukon Gold Potatoes \u2014 7-8 lbs", detail:"5 lb bag for mashed + 2-3 lbs for roasted cubes", price:"$9.00", warnings:[{text:"NOT white/russet potatoes",critical:true}] },
       { id:"s2", name:"Sweet Potatoes \u2014 3-4 medium", detail:"Roasted cubes for lunch/dinner sides", price:"$4.98" }
@@ -277,8 +277,7 @@ var DATA = [
     { name:"Vegetables", items:[
       { id:"s3", name:"Baby Bok Choy \u2014 4-6 heads", detail:"Best non-dairy calcium source. Saut\u00e9 in EVOO + ginger + salt.", price:"$3.74" },
       { id:"s4", name:"Carrots \u2014 2 lbs", detail:"Steam and freeze in Souper Cubes", price:"$3.00" },
-      { id:"s5", name:"Zucchini \u2014 3-4 medium", detail:"Roast with EVOO + oregano + salt", price:"$5.23" },
-      { id:"s6", name:"Green Beans \u2014 1 bunch or bag frozen", detail:"Steam Wednesday cook day", price:"$3.99" },
+      { id:"s5", name:"Zucchini \u2014 5-6 medium", detail:"Roast with EVOO + oregano + salt \u2014 Sunday + Wednesday cook days", price:"$8.22" },
       { id:"s7", name:"English Cucumbers \u2014 2", detail:"Peeled, for snacks with salt + EVOO", price:"$3.00" }
     ]},
     { name:"Fruit", items:[
